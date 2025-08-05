@@ -1,0 +1,36 @@
+name: Docker Image CI
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  
+  jobs:
+    build-and-push:
+      runs-on: ubuntu-latest
+
+      steps:
+        - name: Checkout Code
+          uses: actions/checkout@v4
+
+        - name: Set up JDK 21
+          uses: actions/setup-java@v3
+          with:
+            java-version: '21'
+            distribution: 'temurin'
+
+        - name: Build with Maven
+          run: mvn clean package -DskipTests
+
+        - name: Log in to Docker Hub using CLI
+          run: docker login -u prathamesh72003 -p ${{ secrets.DOCKER_HUB_TOKEN }}
+  
+        - name: Build Docker Image
+          run: |
+            docker build -t prathamesh72003/violetapple-springboot-project:latest .
+  
+        - name: Push Docker Image to Docker Hub
+          run: |
+           docker push prathamesh72003/violetapple-springboot-project:latest
+
+
