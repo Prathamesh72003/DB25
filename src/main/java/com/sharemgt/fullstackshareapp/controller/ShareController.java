@@ -20,7 +20,7 @@ public class ShareController {
     @Autowired
     private ShareService shareService;
 
-    @PostMapping("/addShare")
+    @PostMapping("/addShares")
     public ResponseEntity<Share> addEmployee(@RequestBody Share share){
         return new ResponseEntity<>(shareService.saveShare(share), HttpStatus.CREATED);
     }
