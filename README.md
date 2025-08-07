@@ -1,21 +1,27 @@
 export const getAllTradesFormatted = async () => {
   const data = await safeGet(`${hostNameUrl}/trades/all`);
-
-  if (!Array.isArray(data)) return [];
-
+  
+  // Handle non-array responses
+  if (!Array.isArray(data)) {
+    console.warn('API response is not an array:', data);
+    return [];
+  }
+  
   const transformed = data.map((entry) => {
+    // Destructure with proper fallbacks
     const {
       trade: {
         tradeId,
-        buySellIndicator,
-        quantity,
-        status,
-        unitPrice,
-        tradeDate,
-        settlementDate,
         book = {},
         security = {},
-        counterparty = {}
+        counterparty = {},
+        currency: tradeCurrency,
+        status,
+        quantity,
+        unitPrice,
+        buySellIndicator,
+        tradeDate,
+        settlementDate
       } = {},
       user = {}
     } = entry;
@@ -27,15 +33,15 @@ export const getAllTradesFormatted = async () => {
       issuerName: security.issuerName || "N/A",
       counterparty: counterparty.name || "N/A",
       book: book.name || "N/A",
-      quantity: quantity || 0,
+      quantity: Number(quantity) || 0,
       maturityDate: security.maturityDate || "N/A",
       tradeDate: tradeDate || "N/A",
       settlementDate: settlementDate || "N/A",
       status: status || "N/A",
       assignedUser: user.userId || null,
-      price: unitPrice || 0,
-      currency: security.currency || "N/A",
-      coupon: security.coupon || 0,
+      price: Number(unitPrice) || 0,
+      currency: security.currency || tradeCurrency || "N/A",
+      coupon: Number(security.coupon) || 0,
       buySellIndicator: buySellIndicator || "N/A"
     };
   });
