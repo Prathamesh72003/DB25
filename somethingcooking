@@ -1,0 +1,810 @@
+Dahboard.jsx
+import React from 'react';
+import StatsCards from './StatsCards';
+import BondAnalytics from './BondAnalytics';
+import MaturityReminders from './MaturityReminders';
+import TeamAssignments from './TeamAssignments';
+import './Dashboard.css';
+
+const Dashboard = ({ bonds }) => {
+  return (
+    <div className="dashboard">
+      <div className="dashboard-header">
+        <div>
+          <h1 className="dashboard-title">Dashboard</h1>
+          <p className="dashboard-subtitle">Monitor, prioritize, and manage your bond portfolio with ease.</p>
+        </div>
+        <div className="dashboard-actions">
+          <button className="btn-primary">
+            <span>➕</span>
+            Add Bond
+          </button>
+          <button className="btn-secondary">Import Data</button>
+        </div>
+      </div>
+      
+      <StatsCards bonds={bonds} />
+      
+      <div className="dashboard-grid">
+        <div className="grid-left">
+          <BondAnalytics bonds={bonds} />
+        </div>
+        <div className="grid-right">
+          <MaturityReminders bonds={bonds} />
+          <TeamAssignments bonds={bonds} />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Dashboard;
+
+css
+.dashboard {
+  max-width: 1200px;
+}
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 2rem;
+}
+
+.dashboard-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 0.5rem;
+}
+
+.dashboard-subtitle {
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+.dashboard-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.btn-primary {
+  background: #10b981;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.75rem 1.5rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: background-color 0.2s;
+}
+
+.btn-primary:hover {
+  background: #059669;
+}
+
+.btn-secondary {
+  background: white;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 0.75rem 1.5rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-secondary:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  gap: 2rem;
+}
+
+.grid-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.grid-right {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+@media (max-width: 1024px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .grid-right {
+    order: -1;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-header {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .dashboard-actions {
+    width: 100%;
+  }
+  
+  .btn-primary,
+  .btn-secondary {
+    flex: 1;
+  }
+}
+
+---------------------
+
+BondAna
+import React from 'react';
+import './BondAnalytics.css';
+
+const BondAnalytics = ({ bonds }) => {
+  const chartData = [
+    { day: 'M', value: 30, height: '40%' },
+    { day: 'T', value: 45, height: '60%' },
+    { day: 'W', value: 52, height: '70%' },
+    { day: 'T', value: 68, height: '90%' },
+    { day: 'F', value: 38, height: '50%' },
+    { day: 'S', value: 25, height: '35%' },
+    { day: 'S', value: 42, height: '55%' }
+  ];
+
+  return (
+    <div className="bond-analytics">
+      <h2 className="analytics-title">Bond Analytics</h2>
+      <div className="chart-container">
+        <div className="chart">
+          {chartData.map((data, index) => (
+            <div key={index} className="chart-bar">
+              <div 
+                className="bar" 
+                style={{ height: data.height }}
+                title={`${data.day}: ${data.value} bonds`}
+              ></div>
+              <span className="bar-label">{data.day}</span>
+            </div>
+          ))}
+        </div>
+        <div className="chart-pattern">
+          <div className="pattern-lines">
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className="pattern-line"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default BondAnalytics;
+
+css
+.bond-analytics {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.analytics-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 1.5rem;
+}
+
+.chart-container {
+  position: relative;
+  height: 200px;
+  display: flex;
+  align-items: flex-end;
+}
+
+.chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 1rem;
+  height: 100%;
+  flex: 1;
+  padding: 1rem 0;
+}
+
+.chart-bar {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+}
+
+.bar {
+  width: 100%;
+  max-width: 40px;
+  background: linear-gradient(180deg, #10b981 0%, #059669 100%);
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  position: relative;
+}
+
+.bar:hover {
+  transform: scaleY(1.05);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.bar-label {
+  font-size: 0.75rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.chart-pattern {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  pointer-events: none;
+  opacity: 0.1;
+}
+
+.pattern-lines {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.pattern-line {
+  height: 1px;
+  background: #64748b;
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .chart {
+    gap: 0.5rem;
+  }
+  
+  .bar {
+    max-width: 30px;
+  }
+}
+
+
+-------------
+
+import React from 'react';
+import './MaturityReminders.css';
+
+const MaturityReminders = ({ bonds }) => {
+  const maturingSoon = bonds.filter(bond => {
+    const maturityDate = new Date(bond.maturityDate);
+    const today = new Date();
+    const daysUntilMaturity = Math.ceil((maturityDate - today) / (1000 * 60 * 60 * 24));
+    return daysUntilMaturity <= 5 && daysUntilMaturity > 0 && bond.status === 'active';
+  }).slice(0, 3);
+
+  return (
+    <div className="maturity-reminders">
+      <h2 className="reminders-title">Maturity Reminders</h2>
+      
+      {maturingSoon.length > 0 ? (
+        <div className="reminders-list">
+          {maturingSoon.map((bond) => {
+            const maturityDate = new Date(bond.maturityDate);
+            const today = new Date();
+            const daysUntilMaturity = Math.ceil((maturityDate - today) / (1000 * 60 * 60 * 24));
+            
+            return (
+              <div key={bond.id} className="reminder-item">
+                <div className="reminder-content">
+                  <h3 className="reminder-title">
+                    {bond.issuerName} Bond Maturing
+                  </h3>
+                  <p className="reminder-time">
+                    Time: {maturityDate.toLocaleDateString()} - {daysUntilMaturity} day{daysUntilMaturity !== 1 ? 's' : ''} remaining
+                  </p>
+                </div>
+                <button className="reminder-action">
+                  ⏰ Review Bond
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="no-reminders">
+          <p>No bonds maturing in the next 5 days</p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default MaturityReminders;
+
+.maturity-reminders {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.reminders-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 1.5rem;
+}
+
+.reminders-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.reminder-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.reminder-content {
+  flex: 1;
+}
+
+.reminder-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 0.25rem;
+}
+
+.reminder-time {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin: 0;
+}
+
+.reminder-action {
+  background: #10b981;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  white-space: nowrap;
+}
+
+.reminder-action:hover {
+  background: #059669;
+}
+
+.no-reminders {
+  text-align: center;
+  padding: 2rem;
+  color: #64748b;
+}
+
+.no-reminders p {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+--------
+
+import React from 'react';
+import './StatsCards.css';
+
+const StatsCards = ({ bonds }) => {
+  const activeBonds = bonds.filter(bond => bond.status === 'active');
+  const maturedBonds = bonds.filter(bond => bond.status === 'matured');
+  const maturingSoon = bonds.filter(bond => {
+    const maturityDate = new Date(bond.maturityDate);
+    const today = new Date();
+    const daysUntilMaturity = Math.ceil((maturityDate - today) / (1000 * 60 * 60 * 24));
+    return daysUntilMaturity <= 5 && daysUntilMaturity > 0 && bond.status === 'active';
+  });
+  const unassignedBonds = bonds.filter(bond => !bond.assignedUser && bond.status === 'active');
+
+  const stats = [
+    {
+      title: 'Active Bonds',
+      value: activeBonds.length,
+      change: 'Increased from last month',
+      trend: 'up',
+      color: 'green',
+      icon: '📈'
+    },
+    {
+      title: 'Matured Bonds',
+      value: maturedBonds.length,
+      change: 'Increased from last month',
+      trend: 'up',
+      color: 'gray',
+      icon: '📊'
+    },
+    {
+      title: 'Maturing Soon',
+      value: maturingSoon.length,
+      change: 'Increased from last month',
+      trend: 'up',
+      color: 'blue',
+      icon: '⏰'
+    },
+    {
+      title: 'Unassigned Bonds',
+      value: unassignedBonds.length,
+      change: 'On Discuss',
+      trend: 'neutral',
+      color: 'orange',
+      icon: '📋'
+    }
+  ];
+
+  return (
+    <div className="stats-cards">
+      {stats.map((stat, index) => (
+        <div key={index} className={`stat-card ${stat.color}`}>
+          <div className="stat-header">
+            <span className="stat-title">{stat.title}</span>
+            <div className="stat-trend">
+              <span className="trend-icon">📊</span>
+            </div>
+          </div>
+          <div className="stat-value">{stat.value}</div>
+          <div className="stat-change">
+            <span className="change-icon">{stat.icon}</span>
+            <span className="change-text">{stat.change}</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+export default StatsCards;
+
+.stats-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.stat-card {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  border-left: 4px solid transparent;
+  transition: transform 0.2s, box-shadow 0.2s;
+  cursor: pointer;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.stat-card.green {
+  border-left-color: #10b981;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+}
+
+.stat-card.gray {
+  border-left-color: #6b7280;
+  background: white;
+  color: #374151;
+}
+
+.stat-card.blue {
+  border-left-color: #3b82f6;
+  background: white;
+  color: #374151;
+}
+
+.stat-card.orange {
+  border-left-color: #f59e0b;
+  background: white;
+  color: #374151;
+}
+
+.stat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.stat-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  opacity: 0.9;
+}
+
+.stat-card.green .stat-title {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.stat-trend {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+}
+
+.stat-card.green .stat-trend {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.stat-card:not(.green) .stat-trend {
+  background: #f3f4f6;
+}
+
+.stat-value {
+  font-size: 2.25rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.stat-change {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
+.stat-card.green .stat-change {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.change-icon {
+  font-size: 0.875rem;
+}
+
+@media (max-width: 768px) {
+  .stats-cards {
+    grid-template-columns: 1fr;
+  }
+}
+
+---
+
+// Mock user data
+export const mockUser = {
+  id: 1,
+  name: 'Priya Sharma',
+  email: 'priya.sharma@bondtrader.com',
+  avatar: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=2'
+};
+
+// Mock bond data
+export const mockBonds = [
+  {
+    id: 1,
+    isin: 'US912828XG60',
+    cusip: '912828XG6',
+    issuerName: 'US Treasury',
+    counterparty: 'Goldman Sachs',
+    book: 'Trading Book A',
+    quantity: 1000000,
+    maturityDate: '2025-01-08',
+    tradeDate: '2024-12-15',
+    settlementDate: '2024-12-17',
+    status: 'active',
+    assignedUser: 1,
+    price: 98.75,
+    currency: 'USD',
+    coupon: 4.25,
+    buySellIndicator: 'Buy'
+  },
+  {
+    id: 2,
+    isin: 'IN1234567890',
+    cusip: '123456789',
+    issuerName: 'State Bank of India',
+    counterparty: 'Citigroup',
+    book: 'Investment Book',
+    quantity: 500000,
+    maturityDate: '2025-01-10',
+    tradeDate: '2024-12-10',
+    settlementDate: '2024-12-12',
+    status: 'active',
+    assignedUser: null,
+    price: 102.30,
+    currency: 'INR',
+    coupon: 6.85,
+    buySellIndicator: 'Sell'
+  },
+  {
+    id: 3,
+    isin: 'GB0002634946',
+    cusip: '263494622',
+    issuerName: 'UK Gilt',
+    counterparty: 'JP Morgan',
+    book: 'Trading Book B',
+    quantity: 750000,
+    maturityDate: '2024-12-28',
+    tradeDate: '2024-11-20',
+    settlementDate: '2024-11-22',
+    status: 'matured',
+    assignedUser: 2,
+    price: 99.15,
+    currency: 'GBP',
+    coupon: 3.75,
+    buySellIndicator: 'Buy'
+  },
+  {
+    id: 4,
+    isin: 'DE0001102406',
+    cusip: '110240677',
+    issuerName: 'German Bund',
+    counterparty: 'Deutsche Bank',
+    book: 'European Book',
+    quantity: 2000000,
+    maturityDate: '2025-01-06',
+    tradeDate: '2024-12-01',
+    settlementDate: '2024-12-03',
+    status: 'active',
+    assignedUser: null,
+    price: 101.45,
+    currency: 'EUR',
+    coupon: 2.50,
+    buySellIndicator: 'Buy'
+  },
+  {
+    id: 5,
+    isin: 'CA135087K886',
+    cusip: '135087K88',
+    issuerName: 'Bank of Montreal',
+    counterparty: 'TD Securities',
+    book: 'Canadian Book',
+    quantity: 300000,
+    maturityDate: '2025-01-12',
+    tradeDate: '2024-12-08',
+    settlementDate: '2024-12-10',
+    status: 'active',
+    assignedUser: 3,
+    price: 97.85,
+    currency: 'CAD',
+    coupon: 5.25,
+    buySellIndicator: 'Sell'
+  },
+  {
+    id: 6,
+    isin: 'JP1103651315',
+    cusip: '110365131',
+    issuerName: 'Japan Government Bond',
+    counterparty: 'Nomura Securities',
+    book: 'Asian Book',
+    quantity: 1500000,
+    maturityDate: '2024-12-30',
+    tradeDate: '2024-11-15',
+    settlementDate: '2024-11-17',
+    status: 'matured',
+    assignedUser: 1,
+    price: 100.25,
+    currency: 'JPY',
+    coupon: 1.75,
+    buySellIndicator: 'Buy'
+  },
+  {
+    id: 7,
+    isin: 'AU0000XVGZA3',
+    cusip: '000XVGZA3',
+    issuerName: 'Commonwealth Bank',
+    counterparty: 'ANZ Bank',
+    book: 'Pacific Book',
+    quantity: 800000,
+    maturityDate: '2025-01-15',
+    tradeDate: '2024-12-12',
+    settlementDate: '2024-12-14',
+    status: 'active',
+    assignedUser: null,
+    price: 103.60,
+    currency: 'AUD',
+    coupon: 4.75,
+    buySellIndicator: 'Buy'
+  },
+  {
+    id: 8,
+    isin: 'FR0010517417',
+    cusip: '010517417',
+    issuerName: 'French Treasury',
+    counterparty: 'BNP Paribas',
+    book: 'European Book',
+    quantity: 1200000,
+    maturityDate: '2025-01-05',
+    tradeDate: '2024-11-28',
+    settlementDate: '2024-11-30',
+    status: 'active',
+    assignedUser: 2,
+    price: 98.90,
+    currency: 'EUR',
+    coupon: 3.25,
+    buySellIndicator: 'Sell'
+  },
+  {
+    id: 9,
+    isin: 'CH0224396983',
+    cusip: '224396983',
+    issuerName: 'Swiss Confederation',
+    counterparty: 'Credit Suisse',
+    book: 'Swiss Book',
+    quantity: 600000,
+    maturityDate: '2024-12-26',
+    tradeDate: '2024-11-18',
+    settlementDate: '2024-11-20',
+    status: 'matured',
+    assignedUser: 3,
+    price: 99.75,
+    currency: 'CHF',
+    coupon: 2.00,
+    buySellIndicator: 'Buy'
+  },
+  {
+    id: 10,
+    isin: 'IT0005083057',
+    cusip: '005083057',
+    issuerName: 'Italian Treasury',
+    counterparty: 'UniCredit',
+    book: 'European Book',
+    quantity: 900000,
+    maturityDate: '2025-01-20',
+    tradeDate: '2024-12-05',
+    settlementDate: '2024-12-07',
+    status: 'active',
+    assignedUser: null,
+    price: 96.40,
+    currency: 'EUR',
+    coupon: 4.00,
+    buySellIndicator: 'Sell'
+  }
+];
+
+// Team members
+export const teamMembers = [
+  {
+    id: 1,
+    name: 'Priya Sharma',
+    email: 'priya.sharma@bondtrader.com',
+    avatar: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=2'
+  },
+  {
+    id: 2,
+    name: 'Ravi Kumar', 
+    email: 'ravi.kumar@bondtrader.com',
+    avatar: 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=2'
+  },
+  {
+    id: 3,
+    name: 'Arjun Patel',
+    email: 'arjun.patel@bondtrader.com', 
+    avatar: 'https://images.pexels.com/photos/1681010/pexels-photo-1681010.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&dpr=2'
+  }
+];
