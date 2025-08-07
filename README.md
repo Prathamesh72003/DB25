@@ -1,16 +1,6 @@
-id: Number(tradeId) || null,
-      isin: security?.isin || "N/A",
-      cusip: security?.cusip || "N/A",
-      issuerName: security?.issuerName || "N/A",
-      counterparty: counterparty?.name || "N/A",
-      book: book?.name || "N/A",
-      quantity: Number(quantity) || 0,
-      maturityDate: security?.maturityDate || "N/A",
-      tradeDate: tradeDate || "N/A",
-      settlementDate: settlementDate || "N/A",
-      status: status || "N/A",
-      assignedUser: user?.userId || null,
-      price: Number(unitPrice) || 0,
-      currency: security?.currency || tradeCurrency || "N/A",
-      coupon: Number(security?.coupon) || 0,
-      buySellIndicator: buySellIndicator || "N/A"
+const maturingSoon = bonds.filter(bond => {
+  const maturityDate = new Date(bond.maturityDate);
+  const today = new Date();
+  const daysDiff = Math.ceil((maturityDate - today) / (1000 * 60 * 60 * 24));
+  return daysDiff <= 5 && daysDiff >= 0;
+});
