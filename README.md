@@ -186,3 +186,24 @@ export default function App() {
     </Router>
   );
 }
+
+
+--
+
+export const loginUser = async (email, password) => {
+  if (!email || !password) {
+    throw new Error("Email and password are required for login");
+  }
+
+  try {
+    const response = await axios({
+      method: "GET",
+      url: `${hostNameUrl}/auth/login`,
+      data: { email, password } // body in GET request
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Login request failed:", error?.response?.data || error.message);
+    throw error;
+  }
+};
