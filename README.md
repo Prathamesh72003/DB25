@@ -137,3 +137,52 @@ export default function Login() {
 
   );
 }
+
+
+---
+
+import { Navigate } from "react-router-dom";
+
+export default function ProtectedRoute({ children }) {
+  const user = sessionStorage.getItem("user");
+  return user ? children : <Navigate to="/login" />;
+}
+---
+
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import Login from "./Login";
+import ProtectedRoute from "./ProtectedRoute";
+
+function Dashboard() {
+  const logout = () => {
+    sessionStorage.clear();
+    window.location.href = "/login";
+  };
+  return (
+    <div style={{ padding: "2rem" }}>
+      <h1>Welcome to Dashboard</h1>
+      <button onClick={logout}>Logout</button>
+    </div>
+  );
+}
+
+export default function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route path="*" element={<Login />} />
+      </Routes>
+    </Router>
+  );
+}
