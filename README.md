@@ -1,19 +1,19 @@
-const processedBonds = bondsData2.map((bond) => {
-  // Use optional chaining to safely access nested properties.
-  // The nullish coalescing operator (??) provides a fallback if the property is null or undefined.
-  const isin = bond.trade?.security?.isin ?? bond.security?.isin;
-  const issuer = bond.trade?.security?.issuerName ?? bond.security?.issuerName;
-  const maturity = bond.trade?.security?.maturityDate ?? bond.security?.maturityDate;
-  const status = bond.trade?.security?.status ?? bond.security?.status;
-  
-  // For the `daystomaturity` field, you can check for the existence of `bond.trade` or `bond.book`
-  const daystomaturity = bond.trade?.book ? "Assigned" : "N/A";
-  
-  return {
-    isin,
-    issuer,
-    maturity,
-    daystomaturity,
-    status
-  };
-});
+const safeGet = async (url, fallback = []) => {
+  try {
+    const response = await axios.get(url);
+    return Array.isArray(response.data) ? response.data : fallback;
+  } catch (error) {
+    console.error(`GET ${url} failed:`, error?.response?.data || error.message);
+    return fallback; // Always return array
+  }
+};
+
+export const getAllBonds = async () => {
+  const [openTrades, closeTrades] = await Promise.all([
+    safeGet(`${hostNameUrl}/trades/open`, []),
+    safeGet(`${hostNameUrl}/trades/close`, [])
+  ]);
+
+  // Merge arrays — handles case where one or both are empty
+  return [...openTrades, ...closeTrades];
+};
