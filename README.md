@@ -207,3 +207,33 @@ export const loginUser = async (email, password) => {
     throw error;
   }
 };
+
+--
+
+const App = () => {
+  const location = useLocation();
+
+  // hide navbar on login route
+  const hideNavbar = location.pathname === "/";
+
+  return (
+    <div className="content Area">
+      <ToastContainer />
+      <Router>
+        {!hideNavbar && <NavigationBar />}
+
+        <Routes>
+          <Route path="/" element={<Login />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/userbooks" element={<UserBooks />} />
+          <Route path="/userBonds" element={<MyBonds />} />
+          <Route path="/popupdemo" element={<MainBody />} />
+          <Route path="/allBonds" element={<AllBonds />} />
+          <Route path="/bondsMatured" element={<BondsMatured />} />
+          <Route path="/maturingSoon" element={<BondsMaturingSoon />} />
+          <Route path="/adminPage" element={<AdminPage />} />
+        </Routes>
+      </Router>
+    </div>
+  );
+};
