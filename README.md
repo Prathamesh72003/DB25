@@ -148,10 +148,10 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class CaspTransactionRequestDto {
-    private String transactionId;
+    private Long transactionId;
 }
 
-// Entity DTOs for database mapping
+// Entity DTOs for database mapping - Using Long for IDs
 package com.casp.dto.entity;
 
 import lombok.AllArgsConstructor;
@@ -164,10 +164,10 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class CorporateActionDistributionDto {
-    private String id;
-    private String securitiesPositionId;
-    private String transactionId;
-    private String accountId;
+    private Long id;
+    private Long securitiesPositionId;
+    private Long transactionId;
+    private Long accountId;
 }
 
 @Data
@@ -175,8 +175,8 @@ public class CorporateActionDistributionDto {
 @NoArgsConstructor
 @AllArgsConstructor
 public class CaspTransactionDto {
-    private String transactionId;
-    private String transactionTypeId;
+    private Long transactionId;
+    private Long transactionTypeId;
 }
 
 @Data
@@ -184,7 +184,7 @@ public class CaspTransactionDto {
 @NoArgsConstructor
 @AllArgsConstructor
 public class TransactionTypeDto {
-    private String transactionTypeId;
+    private Long transactionTypeId;
     private String typeAbbrv;
 }
 
@@ -193,9 +193,9 @@ public class TransactionTypeDto {
 @NoArgsConstructor
 @AllArgsConstructor
 public class CorporateActionDisbursementDto {
-    private String transactionId;
+    private Long transactionId;
     private String paymentDate;
-    private String securityId;
+    private Long securityId;
 }
 
 @Data
@@ -203,11 +203,11 @@ public class CorporateActionDisbursementDto {
 @NoArgsConstructor
 @AllArgsConstructor
 public class AccountDto {
-    private String accountId;
+    private Long accountId;
     private String revenueProductCode;
     private String legacyAccountId;
-    private String legalEntityId;
-    private String dealId;
+    private Long legalEntityId;
+    private Long dealId;
 }
 
 @Data
@@ -215,7 +215,7 @@ public class AccountDto {
 @NoArgsConstructor
 @AllArgsConstructor
 public class LegalEntityDto {
-    private String legalEntityId;
+    private Long legalEntityId;
     private String legalEntityCode;
 }
 
@@ -224,8 +224,8 @@ public class LegalEntityDto {
 @NoArgsConstructor
 @AllArgsConstructor
 public class DealPartyDto {
-    private String dealId;
-    private String orgId;
+    private Long dealId;
+    private Long orgId;
 }
 
 @Data
@@ -233,7 +233,7 @@ public class DealPartyDto {
 @NoArgsConstructor
 @AllArgsConstructor
 public class OrgDto {
-    private String orgId;
+    private Long orgId;
     private String crdsId;
 }
 
@@ -242,7 +242,7 @@ public class OrgDto {
 @NoArgsConstructor
 @AllArgsConstructor
 public class SecuritiesMasterDto {
-    private String securityId;
+    private Long securityId;
     private String cusip;
     private String isin;
 }
@@ -255,45 +255,49 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
+
 @Repository
 public interface CorporateActionRepository {
     
+    // Get ALL corporate action distributions for a transaction_id
     @Query(value = "SELECT id, securities_position_id as securitiesPositionId, transaction_id as transactionId, account_id as accountId " +
                    "FROM corporate_action_distribution WHERE transaction_id = :transactionId", nativeQuery = true)
-    CorporateActionDistributionDto findCorporateActionDistributionByTransactionId(@Param("transactionId") String transactionId);
+    List<CorporateActionDistributionDto> findCorporateActionDistributionsByTransactionId(@Param("transactionId") Long transactionId);
     
     @Query(value = "SELECT transaction_id as transactionId, transaction_type_id as transactionTypeId " +
-                   "FROM casp_transaction WHERE transaction_id = :transactionId", nativeQuery = true)
-    CaspTransactionDto findCaspTransactionByTransactionId(@Param("transactionId") String transactionId);
+                   "FROM casp_transaction WHERE transaction_id = :transactionId LIMIT 1", nativeQuery = true)
+    CaspTransactionDto findCaspTransactionByTransactionId(@Param("transactionId") Long transactionId);
     
     @Query(value = "SELECT transaction_type_id as transactionTypeId, type_abbrv as typeAbbrv " +
                    "FROM transaction_type WHERE transaction_type_id = :transactionTypeId", nativeQuery = true)
-    TransactionTypeDto findTransactionTypeById(@Param("transactionTypeId") String transactionTypeId);
+    TransactionTypeDto findTransactionTypeById(@Param("transactionTypeId") Long transactionTypeId);
     
+    // Get ALL disbursements for a transaction_id
     @Query(value = "SELECT transaction_id as transactionId, payment_date as paymentDate, security_id as securityId " +
                    "FROM corporate_action_disbursement WHERE transaction_id = :transactionId", nativeQuery = true)
-    CorporateActionDisbursementDto findCorporateActionDisbursementByTransactionId(@Param("transactionId") String transactionId);
+    List<CorporateActionDisbursementDto> findCorporateActionDisbursementsByTransactionId(@Param("transactionId") Long transactionId);
     
     @Query(value = "SELECT account_id as accountId, revenue_product_code as revenueProductCode, " +
                    "legacy_account_id as legacyAccountId, legal_entity_id as legalEntityId, deal_id as dealId " +
                    "FROM account WHERE account_id = :accountId", nativeQuery = true)
-    AccountDto findAccountById(@Param("accountId") String accountId);
+    AccountDto findAccountById(@Param("accountId") Long accountId);
     
     @Query(value = "SELECT legal_entity_id as legalEntityId, legal_entity_code as legalEntityCode " +
                    "FROM legal_entity WHERE legal_entity_id = :legalEntityId", nativeQuery = true)
-    LegalEntityDto findLegalEntityById(@Param("legalEntityId") String legalEntityId);
+    LegalEntityDto findLegalEntityById(@Param("legalEntityId") Long legalEntityId);
     
     @Query(value = "SELECT deal_id as dealId, org_id as orgId " +
-                   "FROM deal_party WHERE deal_id = :dealId", nativeQuery = true)
-    DealPartyDto findDealPartyByDealId(@Param("dealId") String dealId);
+                   "FROM deal_party WHERE deal_id = :dealId LIMIT 1", nativeQuery = true)
+    DealPartyDto findDealPartyByDealId(@Param("dealId") Long dealId);
     
     @Query(value = "SELECT org_id as orgId, crds_id as crdsId " +
                    "FROM org WHERE org_id = :orgId", nativeQuery = true)
-    OrgDto findOrgById(@Param("orgId") String orgId);
+    OrgDto findOrgById(@Param("orgId") Long orgId);
     
     @Query(value = "SELECT security_id as securityId, cusip, isin " +
                    "FROM securities_master WHERE security_id = :securityId", nativeQuery = true)
-    SecuritiesMasterDto findSecuritiesMasterBySecurityId(@Param("securityId") String securityId);
+    SecuritiesMasterDto findSecuritiesMasterBySecurityId(@Param("securityId") Long securityId);
 }
 
 // Service Interface
@@ -302,7 +306,7 @@ package com.casp.service;
 import com.casp.dto.response.CorporateActionResponseDto;
 
 public interface CorporateActionService {
-    CorporateActionResponseDto getCorporateActionResponse(String transactionId);
+    CorporateActionResponseDto getCorporateActionResponse(Long transactionId);
 }
 
 // Service Implementation
@@ -318,10 +322,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -332,18 +336,18 @@ public class CorporateActionServiceImpl implements CorporateActionService {
     private final CorporateActionMapper mapper;
 
     @Override
-    public CorporateActionResponseDto getCorporateActionResponse(String transactionId) {
+    public CorporateActionResponseDto getCorporateActionResponse(Long transactionId) {
         log.info("Processing corporate action response for transaction ID: {}", transactionId);
 
         try {
-            // Step 1: Get corporate action distribution data
-            CorporateActionDistributionDto distributionData = repository.findCorporateActionDistributionByTransactionId(transactionId);
-            if (distributionData == null) {
-                log.warn("No corporate action distribution found for transaction ID: {}", transactionId);
+            // Step 1: Get ALL corporate action distributions for this transaction_id
+            List<CorporateActionDistributionDto> distributionDataList = repository.findCorporateActionDistributionsByTransactionId(transactionId);
+            if (distributionDataList == null || distributionDataList.isEmpty()) {
+                log.warn("No corporate action distributions found for transaction ID: {}", transactionId);
                 return createEmptyResponse();
             }
 
-            // Step 2: Get transaction type data
+            // Step 2: Get transaction type data (should be same for all, so get once)
             CaspTransactionDto caspTransaction = repository.findCaspTransactionByTransactionId(transactionId);
             String cashflowType = null;
             if (caspTransaction != null && caspTransaction.getTransactionTypeId() != null) {
@@ -353,45 +357,83 @@ public class CorporateActionServiceImpl implements CorporateActionService {
                 }
             }
 
-            // Step 3: Get disbursement data
-            CorporateActionDisbursementDto disbursementData = repository.findCorporateActionDisbursementByTransactionId(transactionId);
+            // Step 3: Get ALL disbursements for this transaction_id
+            List<CorporateActionDisbursementDto> disbursementDataList = repository.findCorporateActionDisbursementsByTransactionId(transactionId);
+            
+            // Create a map for quick disbursement lookup if needed
+            Map<Long, CorporateActionDisbursementDto> disbursementMap = new HashMap<>();
+            if (disbursementDataList != null && !disbursementDataList.isEmpty()) {
+                // For simplicity, we'll use the first disbursement's payment date for all
+                // You can modify this logic if needed
+                CorporateActionDisbursementDto firstDisbursement = disbursementDataList.get(0);
+                disbursementMap.put(transactionId, firstDisbursement);
+            }
 
-            // Step 4: Get account data
+            // Step 4: Process each corporate action distribution
+            List<CashflowDto> cashflows = new ArrayList<>();
+            Set<Long> processedAccounts = new HashSet<>(); // To avoid duplicate party data processing
+            
             AccountDto accountData = null;
-            if (distributionData.getAccountId() != null) {
-                accountData = repository.findAccountById(distributionData.getAccountId());
-            }
-
-            // Step 5: Get legal entity data
             LegalEntityDto legalEntityData = null;
-            if (accountData != null && accountData.getLegalEntityId() != null) {
-                legalEntityData = repository.findLegalEntityById(accountData.getLegalEntityId());
-            }
-
-            // Step 6: Get deal party and org data
             String crdsId = null;
-            if (accountData != null && accountData.getDealId() != null) {
-                DealPartyDto dealPartyData = repository.findDealPartyByDealId(accountData.getDealId());
-                if (dealPartyData != null && dealPartyData.getOrgId() != null) {
-                    OrgDto orgData = repository.findOrgById(dealPartyData.getOrgId());
-                    if (orgData != null) {
-                        crdsId = orgData.getCrdsId();
+            InstrumentDto instrumentData = null;
+
+            for (CorporateActionDistributionDto distributionData : distributionDataList) {
+                // Create cashflow for each distribution
+                CashflowDto cashflow = CashflowDto.builder()
+                        .cashflowId(distributionData.getId() != null ? distributionData.getId().toString() : null)
+                        .cashflowType(cashflowType)
+                        .valueDate(disbursementMap.containsKey(transactionId) ? 
+                                 disbursementMap.get(transactionId).getPaymentDate() : null)
+                        .build();
+
+                // Get account data for this distribution
+                AccountDto currentAccountData = null;
+                if (distributionData.getAccountId() != null) {
+                    currentAccountData = repository.findAccountById(distributionData.getAccountId());
+                    if (currentAccountData != null) {
+                        cashflow.setPrdSid(currentAccountData.getRevenueProductCode());
+                    }
+                }
+
+                cashflows.add(cashflow);
+
+                // Process party and instrument data only once (using first distribution's account)
+                if (!processedAccounts.contains(distributionData.getAccountId()) && currentAccountData != null) {
+                    accountData = currentAccountData;
+                    processedAccounts.add(distributionData.getAccountId());
+
+                    // Get legal entity data
+                    if (accountData.getLegalEntityId() != null) {
+                        legalEntityData = repository.findLegalEntityById(accountData.getLegalEntityId());
+                    }
+
+                    // Get crdsId via deal party chain
+                    if (accountData.getDealId() != null) {
+                        DealPartyDto dealPartyData = repository.findDealPartyByDealId(accountData.getDealId());
+                        if (dealPartyData != null && dealPartyData.getOrgId() != null) {
+                            OrgDto orgData = repository.findOrgById(dealPartyData.getOrgId());
+                            if (orgData != null) {
+                                crdsId = orgData.getCrdsId();
+                            }
+                        }
                     }
                 }
             }
 
-            // Step 7: Get securities master data
-            InstrumentDto instrumentData = null;
-            if (disbursementData != null && disbursementData.getSecurityId() != null) {
-                SecuritiesMasterDto securitiesData = repository.findSecuritiesMasterBySecurityId(disbursementData.getSecurityId());
-                instrumentData = mapper.mapToInstrumentDto(securitiesData);
+            // Step 5: Get instrument data from disbursement
+            if (!disbursementDataList.isEmpty()) {
+                CorporateActionDisbursementDto disbursementData = disbursementDataList.get(0);
+                if (disbursementData.getSecurityId() != null) {
+                    SecuritiesMasterDto securitiesData = repository.findSecuritiesMasterBySecurityId(disbursementData.getSecurityId());
+                    instrumentData = mapper.mapToInstrumentDto(securitiesData);
+                }
             }
 
-            // Build response
+            // Build response with multiple cashflows
             return mapper.mapToCorporateActionResponse(
-                    distributionData,
-                    cashflowType,
-                    disbursementData,
+                    distributionDataList.get(0), // Use first distribution for messageId
+                    cashflows,
                     accountData,
                     legalEntityData,
                     crdsId,
@@ -405,12 +447,15 @@ public class CorporateActionServiceImpl implements CorporateActionService {
     }
 
     private CorporateActionResponseDto createEmptyResponse() {
+        String timestamp = LocalDateTime.now(ZoneId.of("Asia/Kolkata"))
+                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSXXX"));
+        
         return CorporateActionResponseDto.builder()
                 .messageId(null)
-                .messageTimestamp(LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
+                .messageTimestamp(timestamp)
                 .requestingSystemId("CaSP")
                 .data(DataDto.builder()
-                        .cashflows(Collections.emptyList())
+                        .cashflows(new ArrayList<>())
                         .party(PartyDto.builder().build())
                         .instrument(InstrumentDto.builder().build())
                         .additionalAttributes(new HashMap<>())
@@ -425,11 +470,12 @@ package com.casp.mapping;
 import com.casp.dto.entity.*;
 import com.casp.dto.response.*;
 
+import java.util.List;
+
 public interface CorporateActionMapper {
     CorporateActionResponseDto mapToCorporateActionResponse(
-            CorporateActionDistributionDto distributionData,
-            String cashflowType,
-            CorporateActionDisbursementDto disbursementData,
+            CorporateActionDistributionDto firstDistributionData,
+            List<CashflowDto> cashflows,
             AccountDto accountData,
             LegalEntityDto legalEntityData,
             String crdsId,
@@ -448,40 +494,39 @@ import com.casp.mapping.CorporateActionMapper;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 
 @Component
 public class CorporateActionMapperImpl implements CorporateActionMapper {
 
     @Override
     public CorporateActionResponseDto mapToCorporateActionResponse(
-            CorporateActionDistributionDto distributionData,
-            String cashflowType,
-            CorporateActionDisbursementDto disbursementData,
+            CorporateActionDistributionDto firstDistributionData,
+            List<CashflowDto> cashflows,
             AccountDto accountData,
             LegalEntityDto legalEntityData,
             String crdsId,
             InstrumentDto instrumentData) {
 
-        // Create messageId from securities_position_id and transaction_id
+        // Create messageId from securities_position_id and transaction_id of first distribution
         String messageId = null;
-        if (distributionData != null) {
-            messageId = (distributionData.getSecuritiesPositionId() != null ? distributionData.getSecuritiesPositionId() : "") +
-                       (distributionData.getTransactionId() != null ? distributionData.getTransactionId() : "");
+        if (firstDistributionData != null) {
+            String secPosId = firstDistributionData.getSecuritiesPositionId() != null ? 
+                            firstDistributionData.getSecuritiesPositionId().toString() : "";
+            String transId = firstDistributionData.getTransactionId() != null ? 
+                           firstDistributionData.getTransactionId().toString() : "";
+            messageId = secPosId + transId;
             if (messageId.isEmpty()) {
                 messageId = null;
             }
         }
 
-        // Create cashflow
-        CashflowDto cashflow = CashflowDto.builder()
-                .cashflowId(distributionData != null ? distributionData.getId() : null)
-                .cashflowType(cashflowType)
-                .valueDate(disbursementData != null ? disbursementData.getPaymentDate() : null)
-                .prdSid(accountData != null ? accountData.getRevenueProductCode() : null)
-                .build();
+        // Create timestamp in IST format
+        String timestamp = LocalDateTime.now(ZoneId.of("Asia/Kolkata"))
+                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSXXX"));
 
         // Create party
         PartyDto party = PartyDto.builder()
@@ -493,7 +538,7 @@ public class CorporateActionMapperImpl implements CorporateActionMapper {
 
         // Create data
         DataDto data = DataDto.builder()
-                .cashflows(Collections.singletonList(cashflow))
+                .cashflows(cashflows != null ? cashflows : new ArrayList<>())
                 .party(party)
                 .instrument(instrumentData != null ? instrumentData : InstrumentDto.builder().build())
                 .additionalAttributes(new HashMap<>())
@@ -502,7 +547,7 @@ public class CorporateActionMapperImpl implements CorporateActionMapper {
         // Create main response
         return CorporateActionResponseDto.builder()
                 .messageId(messageId)
-                .messageTimestamp(LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
+                .messageTimestamp(timestamp)
                 .requestingSystemId("CaSP")
                 .data(data)
                 .build();
@@ -564,6 +609,11 @@ public class CorporateActionController {
             @RequestBody CaspTransactionRequestDto request) {
         
         log.info("Received corporate action request for transaction ID: {}", request.getTransactionId());
+        
+        if (request.getTransactionId() == null) {
+            log.error("Transaction ID is required");
+            return ResponseEntity.badRequest().build();
+        }
         
         CorporateActionResponseDto response = corporateActionService.getCorporateActionResponse(request.getTransactionId());
         
