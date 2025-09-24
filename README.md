@@ -1,114 +1,76 @@
-package com.example.demo.repository;
+@Entity
+@Table(name = "corporate_action_distribution")
+public class CorporateActionDistribution {
+    @Id
+    private Long id;
 
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
-import org.springframework.data.jpa.repository.JpaRepository;
-import com.example.demo.entity.CorporateActionDistribution;
+    @Column(name = "securities_position_id")
+    private Long securitiesPositionId;
 
-import java.util.List;
+    @ManyToOne
+    @JoinColumn(name = "transaction_id")
+    private CaspTransaction transaction;
 
-public interface CorporateActionDistributionRepository extends JpaRepository<CorporateActionDistribution, Long> {
+    @ManyToOne
+    @JoinColumn(name = "transaction_id", insertable = false, updatable = false)
+    private CorporateActionDisbursement disbursement;
 
-    @Query("""
-        SELECT cad.id AS distributionId,
-               cad.transactionId AS transactionId,
-               cad.securitiesPositionId AS securitiesPositionId,
-               tt.typeAbbrv AS typeAbbrv,
-               caDis.paymentDate AS paymentDate,
-               acc.revenueProductCode AS revenueProductCode,
-               acc.legacyAccountId AS legacyAccountId,
-               le.legalEntityCode AS legalEntityCode,
-               org.crdsId AS crdsId,
-               sm.cusip AS cusip,
-               sm.isin AS isin
-        FROM CorporateActionDistribution cad
-        LEFT JOIN CorporateActionDisbursement caDis 
-               ON cad.transactionId = caDis.transactionId
-        LEFT JOIN CaspTransaction ct 
-               ON cad.transactionId = ct.transactionId
-        LEFT JOIN TransactionType tt 
-               ON ct.transactionTypeId = tt.id
-        LEFT JOIN Account acc 
-               ON cad.accountId = acc.id
-        LEFT JOIN LegalEntity le 
-               ON acc.legalEntityId = le.id
-        LEFT JOIN DealParty dp 
-               ON acc.dealId = dp.dealId
-        LEFT JOIN Org org 
-               ON dp.orgId = org.id
-        LEFT JOIN SecuritiesMaster sm 
-               ON caDis.securityId = sm.id
-        WHERE cad.transactionId = :transactionId
-    """)
-    List<DistributionProjection> findDetailsByTransactionId(@Param("transactionId") Long transactionId);
+    @ManyToOne
+    @JoinColumn(name = "account_id")
+    private Account account;
+
+    @ManyToOne
+    @JoinColumn(name = "transaction_id", insertable = false, updatable = false)
+    private CustodyDisbursement custodyDisbursement;
 }
-package com.example.demo.service;
 
-import com.example.demo.dto.*;
-import com.example.demo.repository.CorporateActionDistributionRepository;
-import com.example.demo.repository.DistributionProjection;
-import org.springframework.stereotype.Service;
+---
 
-import java.time.OffsetDateTime;
-import java.util.*;
+@Entity
+@Table(name = "corporate_action_disbursement")
+public class CorporateActionDisbursement {
+    @Id
+    private Long id;
 
-@Service
-public class CaspResponseService {
+    @Column(name = "payment_date")
+    private LocalDate paymentDate;
 
-    private final CorporateActionDistributionRepository repository;
+    @Column(name = "transaction_id")
+    private Long transactionId;
 
-    public CaspResponseService(CorporateActionDistributionRepository repository) {
-        this.repository = repository;
-    }
+    @ManyToOne
+    @JoinColumn(name = "security_id")
+    private SecuritiesMaster security;
+}
 
-    public List<CaspResponseDto> buildResponses(Long transactionId) {
-        List<DistributionProjection> rows = repository.findDetailsByTransactionId(transactionId);
+----
 
-        List<CaspResponseDto> responses = new ArrayList<>();
+@Entity
+@Table(name = "custody_disbursement")
+public class CustodyDisbursement {
+    @Id
+    private Long id;
 
-        for (DistributionProjection row : rows) {
-            CaspResponseDto resp = new CaspResponseDto();
-            resp.setMessageId(row.getTransactionId() + "-" + row.getSecuritiesPositionId());
-            resp.setMessageTimestamp(OffsetDateTime.now());
-            resp.setRequestingSystemId("CaSP");
+    @ManyToOne
+    @JoinColumn(name = "transaction_id")
+    private CaspTransaction transaction;
 
-            CaspCashflowDto cashflow = new CaspCashflowDto();
-            cashflow.setCashflowId(String.valueOf(row.getDistributionId()));
-            cashflow.setCashflowType(row.getTypeAbbrv());
-            cashflow.setValueDate(row.getPaymentDate());
-            cashflow.setPrdSid(row.getRevenueProductCode());
+    @Column(name = "settlement_date")
+    private LocalDate settlementDate;
+}
 
-            CaspPartyDto party = new CaspPartyDto();
-            party.setSystemAccountId(row.getLegacyAccountId());
-            party.setSystemId(null);
-            party.setEntityId(row.getLegalEntityCode());
-            party.setCrdSId(row.getCrdsId());
+----
 
-            CaspInstrumentDto instrument = new CaspInstrumentDto();
-            if (row.getCusip() != null && row.getIsin() != null) {
-                instrument.setType("CUSIP");  // your business rule
-                instrument.setId(row.getCusip());
-            } else if (row.getCusip() != null) {
-                instrument.setType("CUSIP");
-                instrument.setId(row.getCusip());
-            } else if (row.getIsin() != null) {
-                instrument.setType("ISIN");
-                instrument.setId(row.getIsin());
-            } else {
-                instrument.setType(null);
-                instrument.setId(null);
-            }
+@Entity
+@Table(name = "securities_master")
+public class SecuritiesMaster {
+    @Id
+    @Column(name = "security_id")
+    private Long securityId;
 
-            CaspDataDto data = new CaspDataDto();
-            data.setCashflows(List.of(cashflow));
-            data.setParty(party);
-            data.setInstrument(instrument);
-            data.setAdditionalAttributes(new HashMap<>());
+    @Column(name = "cusip")
+    private String cusip;
 
-            resp.setData(data);
-            responses.add(resp);
-        }
-
-        return responses;
-    }
+    @Column(name = "isin")
+    private String isin;
 }
