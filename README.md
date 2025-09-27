@@ -1,1 +1,1 @@
-This story implements a service with endpoints to publish corporate action transaction data on a Kafka topic. Given a transaction_id, the service queries the database, fetches all associated transactions, and produces each as a separate JSON response/message. The response structure follows the JSON schema provided by dbTax, enabling us to send requests to dbTax for tax rate lookup and perform tax withholding with efficient queries and clean Kafka-based publishing.
+
