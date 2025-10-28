@@ -1,195 +1,207 @@
-Asynchronous Tax Transaction Orchestration (CaSP → dbTax Flow)
-Overview
+package com.consumerservice.pocconsumer.service;
 
-This document describes the architecture for handling tax-related transactions in the CaSP service, which communicates asynchronously with dbTax over Kafka.
+import com.consumerservice.pocconsumer.entity.RequestResponse;
+import com.consumerservice.pocconsumer.repo.RequestResponseRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
 
-When a transaction occurs in CaSP:
+import java.time.Instant;
+import java.util.*;
 
-Multiple tax calculation requests are published to dbTax via Kafka.
+/**
+ * JoinProcessor
+ * ---------------------
+ * This service listens to:
+ *  1. producer_kafka_topic → to receive requests
+ *  2. external_service_topic → to receive enriched responses
+ *
+ * It joins them based on txnId and maintains a 10-minute processing window.
+ *
+ * Example timeline to visualize:
+ *  --------------------------------------------------------------------------
+ *  6:30 - Request (t1, t2, t3) received → stored in DB with req_json
+ *  6:32 - Response for t1 & t2 arrives → immediately updates DB for those two
+ *  6:40 - Still no response for t3 → checkAndProcess() sees it's 10 mins old
+ *         → updates DB for t3 with default taxRate=5
+ *  --------------------------------------------------------------------------
+ */
 
-dbTax processes and responds asynchronously with calculated tax values.
+@Service
+@RequiredArgsConstructor
+public class JoinProcessor {
 
-CaSP waits up to 10 minutes for responses.
+    private final RequestResponseRepository repository;
+    private final ObjectMapper mapper = new ObjectMapper();
 
-For received responses, CaSP applies the actual tax values.
+    // Map to store when each request arrived → used to track 10-minute window
+    private final Map<String, Long> requestTimestamps = new HashMap<>();
 
-For missing responses, CaSP applies default tax values after the timeout.
+    // Map to store responses temporarily in memory
+    // Example:
+    // responses = {
+    //   "TXN101": {"txnId":"TXN101", "amount":23, "taxRate":10},
+    //   "TXN102": {"txnId":"TXN102", "amount":13, "taxRate":12}
+    // }
+    private final Map<String, Map<String, Object>> responses = new HashMap<>();
 
-This approach ensures reliability, scalability, and correctness in tax computation without blocking the main transaction workflow.
 
---
-Problem Statement
+    /**
+     * Called whenever a new message (request) is published to producer_kafka_topic.
+     * Simulates: incoming transaction request from Producer service.
+     */
+    @KafkaListener(topics = "producer_kafka_topic", groupId = "consumer-group")
+    public void consumeRequest(String message) throws Exception {
 
-Transactions in CaSP involve multiple tax calculation requests to dbTax.
-Each transaction can produce multiple Kafka messages (based on transaction_id).
+        // Incoming message example (raw JSON string):
+        // {"txnId": "TXN101", "amount": 5000}
 
-We need to:
+        // Convert JSON → Java Map
+        Map<String, Object> req = mapper.readValue(message, Map.class);
+        // req = { "txnId" : "TXN101", "amount" : 5000 }
 
-Send multiple tax computation requests for a given transaction.
+        String txnId = (String) req.get("txnId");
 
-Wait for up to 10 minutes for dbTax responses.
+        // Record when this request was seen
+        requestTimestamps.put(txnId, Instant.now().toEpochMilli());
 
-Apply tax values for responses received.
+        // Store the request in DB if not already stored
+        RequestResponse rr = repository.findByTransactionId(txnId);
+        if (rr == null) {
+            repository.save(RequestResponse.builder()
+                    .transactionId(txnId)
+                    .uniqueIdentifier(UUID.randomUUID().toString())
+                    .reqJson(mapper.writeValueAsString(req)) // store raw JSON as string
+                    .taxRate(null) // no tax yet
+                    .build());
+        }
 
-Use default values for any missing responses after timeout.
+        System.out.println("🟢 [6:30] Received request: " + txnId);
+//        the req for all 3 would be populated in the talbe
+    }
 
-Ensure all of this happens asynchronously without blocking other transactions.
 
----
+    /**
+     * Called whenever a new message (response) is published to external_service_topic.
+     * Simulates: external system enriched transaction and sent back with taxRate.
+     */
+    @KafkaListener(topics = "external_service_topic", groupId = "consumer_group")
+    public void consumeResponse(String message) throws Exception {
+        System.out.println("\n📥 [Consumer] Received response message: " + message);
 
-Challenges
-Challenge	Description
-Partial responses	Some tax requests may return while others may not. We must handle both cases gracefully.
-Timeout handling	Need deterministic completion after 10 minutes regardless of pending responses.
-Parallel execution	Multiple transactions can be in “waiting” state simultaneously — each should operate independently.
-Persistence & recovery	Must persist state to resume transactions even if CaSP restarts.
+        Map<String, Object> responseMap;
 
---
+        try {
+            // Sometimes the producer sends a raw JSON string (e.g. "{\"txnId\":\"t1\",\"amount\":23,\"taxRate\":10}")
+            // Sometimes it’s nested (e.g. "\"{...}\""). We handle both cases.
+            if (message.startsWith("{")) {
+                responseMap = mapper.readValue(message, Map.class);
+            } else {
+                String innerJson = mapper.readValue(message, String.class);
+                responseMap = mapper.readValue(innerJson, Map.class);
+            }
 
-Solution Overview
+            String txnId = (String) responseMap.get("txnId");
+            responses.put(txnId, responseMap); // Save in-memory for later reference
+            // responses = {
+            //   "TXN101": {"txnId":"TXN101", "amount":23, "taxRate":10},
+            //   "TXN102": {"txnId":"TXN102", "amount":13, "taxRate":12}
+            // }
+            System.out.println("🧩 [Response Parsed] " + responseMap);
 
-The transaction is divided into two stages:
+            Long reqTime = requestTimestamps.get(txnId); // When did we receive the request?
 
-Stage 1 – Initiation:
+            // ---------------------------------------------------------------
+            // CASE 1: Happy Path
+            // Request exists AND response came within 10 minutes.
+            // ---------------------------------------------------------------
+            if (reqTime != null && Instant.now().toEpochMilli() - reqTime < 600_000) {
 
-Execute initial steps of the transaction.
+                RequestResponse rr = repository.findByTransactionId(txnId);
+                if (rr != null) {
+                    rr.setResJson(mapper.writeValueAsString(responseMap));  // Save the full response
+                    rr.setTaxRate(Double.parseDouble(responseMap.get("taxRate").toString())); // Extract taxRate
+                    repository.save(rr);
+                    System.out.println("✅ [Matched + Updated Immediately] txn: " + txnId + " | taxRate: " + rr.getTaxRate());
+                }
 
-Publish tax requests to Kafka.
+            }
+            // ---------------------------------------------------------------
+            // CASE 2: Response arrived but request not yet recorded
+            // (Async timing issue)
+            // ---------------------------------------------------------------
+            else if (reqTime == null) {
+                // This happens if the external service responded faster than the DB commit of the producer.
+                // We do NOT update DB here because request row may appear in a few milliseconds.
+                // Instead, `checkAndProcess()` will catch and fix this later.
+                System.out.println("⏳ [Response Before Request] txn: " + txnId + " — skipping now, will retry in next scheduled check");
 
-Persist tracking data in DB.
+            }
+            // ---------------------------------------------------------------
+            // CASE 3: Response arrived after the 10-min window
+            // (Late response — we missed the window)
+            // ---------------------------------------------------------------
+            else {
+                // You *could* apply the default tax rate here,
+                // but we avoid doing that directly because:
+                // - Some responses come milliseconds before 10 min cutoff but get delayed in processing.
+                // - We prefer all delayed handling to go through `checkAndProcess()` for consistency.
+                System.out.println("[Late Response] txn: " + txnId + " — came after 10-min cutoff, will be handled in reconciliation");
+            }
 
-Schedule completion after 10 minutes.
+        } catch (Exception e) {
+            System.err.println("Error while processing response: " + e.getMessage());
+        }
+    }
 
-Stage 2 – Completion:
 
-Collect responses asynchronously as they arrive.
+    /**
+     * This scheduled method runs every minute.
+     * It checks for requests that are waiting for a response beyond 10 minutes.
+     * For each expired request:
+     *  - If a response exists → update with it (late but valid)
+     *  - If no response → update DB with default taxRate=5
+     * Finally, removes the entry from in-memory maps.
+     */
+    @Scheduled(fixedRate = 60000)
+    public void checkAndProcess() {
+        long now = Instant.now().toEpochMilli();
 
-Once all responses are received, or 10 minutes have elapsed:
+        for (String txnId : new HashSet<>(requestTimestamps.keySet())) {
+            long reqTime = requestTimestamps.get(txnId);
 
-Apply actual tax values for responses received.
+            // Check if request is older than 10 minutes
+            if (now - reqTime > 600_000) { // 10 mins = 600000 ms
+                try {
+                    Map<String, Object> res = responses.get(txnId);
+                    RequestResponse rr = repository.findByTransactionId(txnId);
 
-Apply default tax values for missing ones.
+                    if (rr == null) continue;
 
-Complete the transaction.
+                    if (res != null) {
+                        // A response exists (maybe it came earlier)
+                        rr.setResJson(mapper.writeValueAsString(res));
+                        rr.setTaxRate(Double.parseDouble(res.get("taxRate").toString()));
+                        System.out.println("✅ [6:40] Response matched for txn " + txnId);
+                    } else {
+                        // No response received even after 10 mins → fallback to default taxRate=5
+                        rr.setResJson(null);
+                        rr.setTaxRate(5.0);
+                        System.out.println("[6:40] Response missing after 10 min for txn " + txnId);
+                    }
 
---
+                    repository.save(rr);
 
-Database Design
-1. transaction_tracker
-
-Stores metadata per transaction for tracking its progress.
-
-Column	Type	Description
-id	BIGINT (PK)	Auto-generated primary key
-txn_id	VARCHAR	Unique identifier for transaction
-req_count	INT	Number of tax requests published
-sent_at	TIMESTAMP	When the requests were sent
-completed	BOOLEAN	True if transaction finalized
-all_responses_received	BOOLEAN	True if all expected responses received
-timeout_at	TIMESTAMP	Scheduled time for fallback execution
-
----
-
-Detailed Flow
-Stage 1: Transaction Initiation (CaSP)
-
-public void processTransaction(String txnId) {
-    step1();
-    step2();
-
-    int requestCount = kafkaProducerService.publishTaxRequests(txnId);
-
-    TransactionTracker tracker = new TransactionTracker();
-    tracker.setTxnId(txnId);
-    tracker.setReqCount(requestCount);
-    tracker.setSentAt(Instant.now());
-    tracker.setCompleted(false);
-    tracker.setAllResponsesReceived(false);
-    trackerRepo.save(tracker);
-
-    taskScheduler.schedule(
-        () -> completeTransaction(txnId),
-        Date.from(Instant.now().plus(10, ChronoUnit.MINUTES))
-    );
-}
-
-Stage 2: Receiving Responses (dbTax → Kafka → CaSP)
-@KafkaListener(topics = "dbtax-response-topic")
-public void handleTaxResponse(TaxResponse response) {
-    String txnId = response.getTxnId();
-    taxResponseRepo.save(response);
-
-    TransactionTracker tracker = trackerRepo.findByTxnId(txnId);
-    long receivedCount = taxResponseRepo.countByTxnId(txnId);
-
-    if (receivedCount == tracker.getReqCount()) {
-        tracker.setAllResponsesReceived(true);
-        trackerRepo.save(tracker);
-        completeTransaction(txnId);  // Early trigger if all received
+                } catch (Exception e) {
+                    e.printStackTrace();
+                } finally {
+                    // Clean up memory — this txn is done (either success or timeout)
+                    requestTimestamps.remove(txnId);
+                    responses.remove(txnId);
+                }
+            }
+        }
     }
 }
-
-Stage 3: Transaction Completion
-
-@Async
-public void completeTransaction(String txnId) {
-    TransactionTracker tracker = trackerRepo.findByTxnId(txnId);
-    if (tracker.isCompleted()) return;
-
-    List<TaxResponse> responses = taxResponseRepo.findByTxnId(txnId);
-    Map<String, BigDecimal> taxMap = buildTaxMap(responses, tracker.getReqCount());
-
-    step3_applyTaxes(taxMap);  // Apply actual + default values
-    step4_finalizeTransaction();
-
-    tracker.setCompleted(true);
-    trackerRepo.save(tracker);
-}
-
-Helper:
-private Map<String, BigDecimal> buildTaxMap(List<TaxResponse> responses, int expectedCount) {
-    Map<String, BigDecimal> map = new HashMap<>();
-    for (TaxResponse r : responses) map.put(r.getReqRef(), r.getTaxValue());
-    for (int i = 1; i <= expectedCount; i++)
-        map.putIfAbsent("REQ_" + i, DEFAULT_TAX_VALUE);
-    return map;
-}
-
-Spring Configuration
-@Configuration
-@EnableAsync
-@EnableScheduling
-public class AppConfig {
-    @Bean
-    public TaskScheduler taskScheduler() {
-        return new ConcurrentTaskScheduler();
-    }
-}
-
---
-
-Key Advantages
-Feature	Benefit
-Non-blocking	Each transaction runs asynchronously without holding threads for 10 minutes.
-Partial response handling	Applies received tax values while defaulting missing ones.
-Resilience	Persistent tracking ensures recovery after restarts or failures.
-Scalability	Supports thousands of concurrent transactions independently.
-Timeout enforcement	Ensures every transaction completes deterministically within 10 minutes.
-Early completion	Automatically finishes early if all dbTax responses are received sooner.
-
---
-
-Conclusion
-
-This design enables CaSP to handle multi-request tax computations with dbTax safely and efficiently.
-It ensures:
-
-Each transaction is independently tracked,
-
-No blocking or thread starvation occurs,
-
-Partial responses are handled intelligently, and
-
-Every transaction deterministically completes after the timeout window.
-
-This balances reliability, scalability, and simplicity — ideal for production in a Kafka-based distributed system.
