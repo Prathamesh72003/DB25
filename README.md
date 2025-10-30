@@ -1,5 +1,6 @@
-{ R1 → 5.0 }
+.\bin\windows\zookeeper-server-start.bat .\config\zookeeper.properties
 
-adds {R2 → 10.0}
 
-windowStore now → {R1, R2}
+.\bin\windows\kafka-server-start.bat .\config\server.properties
+
+.\bin\windows\kafka-console-consumer.bat --bootstrap-server localhost:9092 --topic corporate-action-distributions --from-beginning
